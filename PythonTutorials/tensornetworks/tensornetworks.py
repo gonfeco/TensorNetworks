@@ -300,3 +300,129 @@ def compose_mps(mps):
         tensor = contract_indices(
             tensor, mps[i], [tensor.ndim-1], [0])
     return tensor
+
+def tensor_identity(dim_1, dim_2):
+    """
+    Given 2 input dimensions creates the rank 3 identity tensor that
+    allow to combine them.
+
+    Parameters
+    ----------
+
+    dim_1 : int
+        First input dimension
+    dim_2 : int
+        Second input dimension
+
+    Returns
+    _______
+
+    t_i : np.array
+        numpy array with the 3-rank identity tensor with shape:
+        (dim_1, dim_2, dim_1*dim_2)
+    """
+    m_i = np.identity(dim_1 * dim_2)
+    t_i = m_i.reshape(dim_2 , dim_1, dim_1 * dim_2)
+    return t_i
+
+def mps_contracion(tensor_1, tensor_2):
+    """
+    Contraction of 2 input tensors with corresponding adjust of dimension
+    The input tensors MUST be rank 2 or 3 tensors.
+
+    Parameters
+    ----------
+
+    tensor_1 : np array
+        First input 2 or 3 rank tensor
+    tensor_2 : np array
+        Second input 2 or 3 rank tensor
+
+    Returns
+    _______
+
+    step : np array
+        output rank 2 or 3 tensor
+    """
+
+    rank_tensor_1 = tensor_1.ndim
+    rank_tensor_2 = tensor_2.ndim
+
+    if tensor_1.shape[0] != tensor_1.shape[1]:
+        raise ValueError("Problem with tensor_1 shapes")
+    if tensor_2.shape[0] != tensor_2.shape[1]:
+        raise ValueError("Problem with tensor_2 shapes")
+
+    # Create 3-rank identity using tensor_1 tensor
+    ket = tensor_identity(tensor_1.shape[0], tensor_2.shape[0])
+    bra = ket#.transpose(1,0,2)
+
+    if (rank_tensor_1 == 2) and (rank_tensor_2 == 2):
+        # Case 0
+        step = contract_indices(tensor_1, ket, [1], [1])
+        step = contract_indices(step, tensor_2, [1], [1])
+        step = contract_indices(step, bra, [0,2], [1, 0])
+        if step.ndim != 2:
+            text = "Case 0: final tensor dimension is: {} but should be 2"\
+                .format(step.ndim)
+            raise ValueError(text)
+        step = step.transpose(1, 0)
+
+    elif (rank_tensor_1 == 2) and (rank_tensor_2 == 3):
+        # Case 1
+        step = contract_indices(tensor_1, ket, [1], [1])
+        step = contract_indices(step, tensor_2, [1], [1])
+        step = contract_indices(step, bra, [0,2], [1, 0])
+        if step.ndim != 3:
+            text = "Case 2: final tensor dimension is: {} but should be 3"\
+                .format(step.ndim)
+            raise ValueError(text)
+        step = step.transpose(2, 0, 1)
+
+    elif (rank_tensor_1 == 3) and (rank_tensor_2 == 2):
+        # Case 2
+        step = contract_indices(tensor_1, ket, [1], [1])
+        step = contract_indices(step, tensor_2, [2], [1])
+        step = contract_indices(step, bra, [0, 3], [1, 0])
+        if step.ndim != 3:
+            text = "Case 2: final tensor dimension is: {} but should be 3"\
+                .format(step.ndim)
+            raise ValueError(text)
+        step = step.transpose(2, 1, 0)
+
+    elif (rank_tensor_1 == 3) and (rank_tensor_2 == 3):
+        # Case 3
+        step = contract_indices(tensor_1, ket, [1], [1])
+        step = contract_indices(step, tensor_2, [1, 2], [2, 1])
+        step = contract_indices(step, bra, [0, 2], [1, 0])
+        if step.ndim != 2:
+            text = "Case 3: final tensor dimension is: {} but should be 2"\
+                .format(step.ndim)
+            raise ValueError(text)
+        step = step.transpose(1, 0)
+    else:
+        raise ValueError("Problem with input shapes")
+    return step
+
+def zipper(sites_list):
+    """
+    Given a list with operators acting on each sites compute the
+    full contraction using zipper strategy
+
+    Parameters
+    ----------
+
+    sites_list : list
+        Each elemnt is a tensor that acts on the site
+
+    Returns
+    _______
+
+    step : np array
+        2-rank tensor with the complete contraction
+    """
+    step = mps_contracion(sites_list[0], sites_list[1])
+    rest_of_sites = sites_list[2:]
+    for site in rest_of_sites:
+        step = mps_contracion(step, site)
+    return step
