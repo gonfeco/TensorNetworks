@@ -426,3 +426,28 @@ def zipper(sites_list):
     for site in rest_of_sites:
         step = mps_contracion(step, site)
     return step
+
+def zipper_norm(mps):
+    """
+    Given a list of rank-3 tensors (a MPS) perform the zipper
+    contraction for computing the correspondient norm
+
+    Parameters
+    ----------
+
+    mps : list
+        Each elemnt is a rank-3 tensor
+    
+    Returns
+    _______
+
+    norm : np array
+        norm of the input mps
+    """
+    tensor = mps[0]
+    tensor_out = contract_indices(tensor, np.conj(tensor), [0, 1], [0, 1])
+    for tensor_l in mps[1:]:
+        tensor_out = contract_indices(tensor_l, tensor_out, [1], [0])
+        tensor_out = contract_indices(tensor_out, np.conj(tensor_l), [0, 2], [0, 1])
+    norm = tensor_out.reshape(1)
+    return norm
