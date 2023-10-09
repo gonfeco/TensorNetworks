@@ -278,28 +278,28 @@ def mps_svd_lr_decompose(tensor):
     mps.append(m_step)
     return mps, d_alphas, size, ent_entropy
 
-def compose_mps(mps):
-    """
-    Given an input MPS it computes the final Tensor
-
-    Parameters
-    ----------
-
-    mps : list
-        list where each element is a rank-3 tensor that conforms de MPS
-
-    Returns
-    _______
-
-    tensor : np.array
-        numpy array with the correspondient tensor
-
-    """
-    tensor = mps[0]
-    for i in range(1, len(mps)):
-        tensor = contract_indices(
-            tensor, mps[i], [tensor.ndim-1], [0])
-    return tensor
+# def compose_mps(mps):
+#     """
+#     Given an input MPS it computes the final Tensor
+# 
+#     Parameters
+#     ----------
+# 
+#     mps : list
+#         list where each element is a rank-3 tensor that conforms de MPS
+# 
+#     Returns
+#     _______
+# 
+#     tensor : np.array
+#         numpy array with the correspondient tensor
+# 
+#     """
+#     tensor = mps[0]
+#     for i in range(1, len(mps)):
+#         tensor = contract_indices(
+#             tensor, mps[i], [tensor.ndim-1], [0])
+#     return tensor
 
 def tensor_identity(dim_1, dim_2):
     """
