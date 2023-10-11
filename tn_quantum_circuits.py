@@ -49,7 +49,7 @@ def bitfield_to_int(lista):
     return int(integer)
 
 
-def compose_mps(mps):
+def compose_mps(mps, last=True):
     """
     Given an input MPS it computes the final Tensor
     The rank-3 tensor MUST HAVE following indexing:
@@ -97,8 +97,12 @@ def compose_mps(mps):
         # -o-o-o-...-o- - -o-
         # || | |     |     ||
         # |_________________|
-        tensor = contract_indices(
-            tensor, mps[-1], [tensor.ndim-1, 0], [0, 2])
+        if last:
+            tensor = contract_indices(
+                tensor, mps[-1], [tensor.ndim-1, 0], [0, 2])
+        else:
+            tensor = contract_indices(
+                tensor, mps[-1], [tensor.ndim-1], [0])
     elif (start_tensor.ndim == 2) and (end_tensor.ndim == 2):
         # First and Last tensor are rank-2 tensors
         tensor = mps[0]
