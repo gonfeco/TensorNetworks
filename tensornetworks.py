@@ -108,6 +108,45 @@ def contract_indices(tensor1, tensor2, contraction1=[], contraction2=[]):
 
     return contraction_tensor
 
+def contract_indices_one_tensor(tensor, contractions):
+    """
+    For an input tensor executes indices contractions by pair.
+    The computation is done by contracting each para of indices
+    with its corresponding identity matrix.
+    EXAMPLE:
+    contractions = [(1, 5), (3, 4)] Index 1 will be contracted with
+    indice 5 and index 3 with index 4
+
+    Parameters
+    ----------
+
+    tensor : numpy array
+        input tensor
+    contractions : list
+        each element is a tuple of the indices to be contracted
+
+    Returns
+    _______
+
+    tensor : numpy array
+        Desired tensor with the corresponding contractions done
+
+    """
+
+    list_of_eyes = []
+    indices = []
+    for c_ in contractions:
+        if tensor.shape[c_[0]] != tensor.shape[c_[1]]:
+            raise ValueError("Problem with contraction: {}".format(c_))
+        indices = indices + [c_[0], c_[1]]
+        list_of_eyes.append(np.eye(tensor.shape[c_[0]]))
+    tensor_out = list_of_eyes[0]
+    for tensor_step in list_of_eyes[1:]:
+        tensor_out = contract_indices(tensor_out, tensor_step)
+    tensor_out = contract_indices(
+        tensor, tensor_out, indices, list(range(tensor_out.ndim)))
+    return tensor_out
+
 
 def reduced_matrix(state, free_indices, contraction_indices):
     """
@@ -498,9 +537,7 @@ def density_matrix_mps_contracion(tensor_1, tensor_2):
     elif (rank_tensor_1 == 6) and (rank_tensor_2 == 6):
         # Case 3
         tensor_out = contract_indices(tensor_1, tensor_2, [2, 5], [0, 3])
-        print(tensor_out.shape)
         tensor_out = tensor_out.transpose(0, 2, 1, 4, 3, 6, 5, 7)
-        print(tensor_out.shape)
         reshape = [
             tensor_out.shape[0], tensor_out.shape[1],
             tensor_out.shape[2] * tensor_out.shape[3],
@@ -508,7 +545,6 @@ def density_matrix_mps_contracion(tensor_1, tensor_2):
             tensor_out.shape[6], tensor_out.shape[7]
         ]
         tensor_out = tensor_out.reshape(reshape)
-        print(tensor_out.shape)
         tensor_out = tensor_out.transpose(0, 2, 4, 1, 3, 5)
     else:
         raise ValueError("Input Tensors MUST be rank-4 or rank-6")
