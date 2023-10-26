@@ -15,7 +15,7 @@ import pandas as pd
 from scipy import linalg
 from pauli import pauli_decomposition
 from tensornetworks import contract_indices, contract_indices_one_tensor, \
-    density_matrix_mps_contracion
+    density_matrix_mps_contracion, mpo_contraction
 import logging
 logger = logging.getLogger('__name__')
 
@@ -49,6 +49,69 @@ def get_null_projectors(array):
     # Computing the projectors to the null space
     h_null = v_null @ np.conj(v_null.T)
     return h_null
+
+def reduced_rho_mpo(mps, free_indices, contraction_indices):
+    i = 0
+    tensor_out = mps[i]
+    # Starting Tensor for Denisty Matrix
+    
+    tensor = mps[0]
+
+    
+    if i in free_indices:
+        
+        tensor_out = contract_indices(tensor_out, tensor_out.conj(), [], [])
+        tensor_out = tensor_out.transpose(0, 3, 1, 4, 2, 5)
+        reshape = [
+            tensor_out.shape[0] * tensor_out.shape[1], 
+            tensor_out.shape[2], tensor_out.shape[3],
+            tensor_out.shape[4] * tensor_out.shape[5], 
+        ]
+        tensor_out = tensor_out.reshape(reshape)
+
+    elif i in contraction_indices:
+        
+        tensor_out = contract_indices(tensor_out, tensor_out.conj(), [1], [1])
+        tensor_out = tensor_out.transpose(0, 2, 1, 3)
+        reshape = [
+            tensor_out.shape[0] * tensor_out.shape[1], 
+            tensor_out.shape[2] * tensor_out.shape[3]
+        ]
+        tensor_out = tensor_out.reshape(reshape)        
+        
+    else:
+        raise ValueError("Problem with site i: {}".format(i))
+    
+    for i in range(1, len(mps)):
+        tensor = mps[i]
+        if i in free_indices:
+            tensor = contract_indices(tensor, tensor.conj(), [], [])
+            tensor = tensor.transpose(0, 3, 1, 4, 2, 5)
+            reshape = [
+                tensor.shape[0] * tensor.shape[1], 
+                tensor.shape[2], tensor.shape[3],
+                tensor.shape[4] * tensor.shape[5], 
+            ]
+            tensor = tensor.reshape(reshape)
+
+        elif i in contraction_indices:
+            tensor = contract_indices(tensor, tensor.conj(), [1], [1])
+            tensor = tensor.transpose(0, 2, 1, 3)
+            reshape = [
+                tensor.shape[0] * tensor.shape[1], 
+                tensor.shape[2] * tensor.shape[3]
+            ]
+            tensor = tensor.reshape(reshape)    
+            
+        else:
+            raise ValueError("Problem with site i: {}".format(i))        
+        
+        logger.debug("Shape tensor_out: %s", tensor_out.shape)
+        tensor_out = mpo_contraction(tensor_out, tensor)
+        
+    tensor_out = contract_indices_one_tensor(tensor_out, [(0, 3)])
+    
+    return tensor_out
 
 def reduced_rho_mps(mps, free_indices, contraction_indices):
     i = 0
@@ -119,7 +182,7 @@ def get_local_reduced_matrix(state, qb_pos):
         ]
         logger.debug("\t contraction_indices: %s", contraction_indices)
         # Computing the reduced density matrix
-        rho = reduced_rho_mps(state, free_indices, contraction_indices)
+        rho = reduced_rho_mpo(state, free_indices, contraction_indices)
         # Computes the rank of the obtained reduced matrix
         rank = np.linalg.matrix_rank(rho)
         logger.debug("\t rank: %d. Dimension: %d", rank, len(rho))
