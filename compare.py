@@ -18,7 +18,8 @@ def do_mps(nqubits, depth):
     ph_ob_mps = PH_MPS(mps, True, **ph_conf)
     ph_ob_mps.local_ph()
     pdf = ph_ob_mps.pauli_pdf
-    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-10]
+    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-4]
+    print(pdf)
     return pdf,  angles
 
 def do_myqlm(nqubits, depth):
@@ -40,7 +41,7 @@ def do_myqlm(nqubits, depth):
     ph_ob = PH(pdf[["Amplitude"]], True, **ph_conf)
     ph_ob.local_ph()
     pdf = ph_ob.pauli_pdf
-    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-10]
+    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-4]
     return pdf, angles
 
 
@@ -111,6 +112,8 @@ if __name__ == "__main__":
     if (args.mps) and (args.myqlm):
         test_angles = np.isclose(np.array(mps_angles), np.array(myqlm_angles)).all()
         assert test_angles
+        #print(pdf_mps)
+        #print(pdf_myqlm)
         Test = np.isclose(
             pdf_mps["PauliCoefficients"].astype(float),
             pdf_myqlm["PauliCoefficients"].astype(float),

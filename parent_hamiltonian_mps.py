@@ -15,8 +15,7 @@ import pandas as pd
 from scipy import linalg
 from itertools import product
 from pauli import pauli_decomposition
-from tensornetworks import contract_indices, contract_indices_one_tensor, \
-    density_matrix_mps_contracion, mpo_contraction
+from reduced_rho import reduced_rho_mps
 import logging
 logger = logging.getLogger('__name__')
 
@@ -93,7 +92,7 @@ def get_local_reduced_matrix(state, qb_pos):
         ]
         logger.debug("\t contraction_indices: %s", contraction_indices)
         # Computing the reduced density matrix
-        rho = reduced_rho_mpo(state, free_indices, contraction_indices)
+        rho = reduced_rho_mps(state, free_indices, contraction_indices)
         # Computes the rank of the obtained reduced matrix
         rank = np.linalg.matrix_rank(rho)
         logger.debug("\t rank: %d. Dimension: %d", rank, len(rho))
@@ -222,7 +221,9 @@ class PH_MPS:
 
         for qb_pos in iterator:
             # Computing local reduced density matrix of the qubit
+            logger.info("Reduced density Matrix Computations. Start")
             lq, lrho = get_local_reduced_matrix(self.mps_state, qb_pos)
+            logger.info("Reduced density Matrix Computations. End")
             self.local_free_qubits = self.local_free_qubits + [lq]
             self.reduced_rho = self.reduced_rho + [lrho]
             # Computing projector on null space for the qubit
@@ -248,6 +249,7 @@ class PH_MPS:
         #         step = [(qb_pos + k) % self.nqubits for k in range(
         #             len(self.local_free_qubits[0]))]
         #         self.qubits_list = self.qubits_list + [step] * terms
+
         self.get_pauli_pdf()
         tack = time.time()
         self.ph_time = tack - tick

@@ -5,8 +5,6 @@ Parent Hamiltonian ansatz using MPS
 import numpy as np
 import tn_quantum_circuits as tnqc
 import gates as gt
-from tensornetworks import contract_indices, contract_indices_one_tensor, \
-    density_matrix_mps_contracion
 
 def apply_2qubit_gates(qubits, gates, truncate=True, t_v=1.0e-8):
     """
