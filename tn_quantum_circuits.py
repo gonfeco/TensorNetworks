@@ -8,6 +8,50 @@ from scipy.linalg import svd
 from tensornetworks import contract_indices
 logger = logging.getLogger('__name__')
 
+def my_svd(array, truncate=False, t_v=None):
+    """
+    Execute SVD.
+
+    Parameters
+    ----------
+    array : np.array
+
+        Arry with matrix for SVD
+    truncate : Bool
+        For truncating SVD. If t_v is None then the truncation will be
+        using float prcision of the system
+    t_v : float
+        In truncate is True then the t_v float will use as truncation
+        threshold
+
+    Returns
+    -------
+
+    u_, s, vh : np.arrays
+        numpy arrays with the SVD of the input array
+    """
+    u_, s_, vh = svd(array, full_matrices=False)
+    logger.debug('Before Truncation u_: {}'.format(u_.shape))
+    logger.debug('Before Truncation vh: {}'.format(vh.shape))
+    logger.debug('Before Truncation s_: {}'.format(s_.shape))
+    if truncate == True:
+        # For truncate SVD
+        logger.debug('Truncation s_: {}'.format(s_))
+        if t_v is None:
+            # If not Truncation limit we use minimum float precision
+            eps = np.finfo(float).eps
+            u_ = u_[:, s_> eps]
+            vh = vh[s_> eps, :]
+            s_ = s_[s_> eps]
+        else:
+            u_ = u_[:, s_> t_v]
+            vh = vh[s_> t_v, :]
+            s_ = s_[s_> t_v]
+        logger.debug('After Truncation u_: {}'.format(u_.shape))
+        logger.debug('After Truncation vh: {}'.format(vh.shape))
+        logger.debug('After Truncation s_: {}'.format(s_.shape))
+    return u_, s_, vh
+
 def bitfield(n_int: int, size: int):
     """Transforms an int n_int to the corresponding bitfield of size size
 
@@ -170,7 +214,7 @@ def apply_local_gate(mps, gates):
             q_, g_, [1], [0]).transpose(0, 2, 1))
     return o_qubits
 
-def apply_2qubit_gate(tensor1, tensor2, gate = None):
+def apply_2qubit_gate(tensor1, tensor2, gate = None, truncate=False, t_v=None):
     """
     Executes a 2-qubit gate between 2 rank-3 tensors
     The rank-3 tensors MUST HAVE following indexing:
@@ -222,7 +266,7 @@ def apply_2qubit_gate(tensor1, tensor2, gate = None):
         step = step.reshape(dim1, dim2)
 
         logger.debug("Matrix for SVD : %s", step.shape)
-        u_, s_, vh = svd(step, full_matrices=False)
+        u_, s_, vh = my_svd(step, truncate, t_v)
         logger.debug("u_: %s", u_.shape)
         logger.debug("s_: %s", s_.shape)
         logger.debug("vh: %s", vh.shape)

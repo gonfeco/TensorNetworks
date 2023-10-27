@@ -17,7 +17,9 @@ def do_mps(nqubits, depth):
     ph_conf = {"save": False}
     ph_ob_mps = PH_MPS(mps, True, **ph_conf)
     ph_ob_mps.local_ph()
-    return ph_ob_mps.pauli_pdf,  angles
+    pdf = ph_ob_mps.pauli_pdf
+    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-10]
+    return pdf,  angles
 
 def do_myqlm(nqubits, depth):
     conf = {
@@ -37,7 +39,9 @@ def do_myqlm(nqubits, depth):
     ph_conf = {"save": False}
     ph_ob = PH(pdf[["Amplitude"]], True, **ph_conf)
     ph_ob.local_ph()
-    return ph_ob.pauli_pdf, angles
+    pdf = ph_ob.pauli_pdf
+    pdf = pdf[abs(pdf["PauliCoefficients"].astype(float)) >  1.0e-10]
+    return pdf, angles
 
 
 if __name__ == "__main__":
@@ -86,6 +90,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     nqubits = args.nqubits
     depth = args.depth
+    #print(np.finfo(float).eps)
     if args.mps:
         tick = time.time()
         pdf_mps, angles_mps = do_mps(nqubits, depth)
@@ -114,6 +119,8 @@ if __name__ == "__main__":
         if Test == False:
             error = pdf_mps["PauliCoefficients"].astype(float) - pdf_myqlm["PauliCoefficients"].astype(float)
             error = np.sqrt((error **2).sum())
+            print(pdf_mps)
+            print(pdf_myqlm)
             print("BE AWARE Paulti Coefs are not same. Error: {}".format(error))
 
 

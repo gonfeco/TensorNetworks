@@ -13,6 +13,7 @@ import time
 import numpy as np
 import pandas as pd
 from scipy import linalg
+from itertools import product
 from pauli import pauli_decomposition
 from tensornetworks import contract_indices, contract_indices_one_tensor, \
     density_matrix_mps_contracion, mpo_contraction
@@ -50,12 +51,14 @@ def get_null_projectors(array):
     h_null = v_null @ np.conj(v_null.T)
     return h_null
 
-def reduced_rho_mpo(mps, free_indices, contraction_indices):
+def reduced_rho_mpo_old(mps, free_indices, contraction_indices):
+    logger.debug("mps: {}".format([a.shape for a in mps]))
     i = 0
     tensor_out = mps[i]
     # Starting Tensor for Denisty Matrix
     
     tensor = mps[0]
+
 
     
     if i in free_indices:
@@ -106,14 +109,17 @@ def reduced_rho_mpo(mps, free_indices, contraction_indices):
         else:
             raise ValueError("Problem with site i: {}".format(i))        
         
-        logger.debug("Shape tensor_out: %s", tensor_out.shape)
+        logger.debug("Shape tensor_out in: %s", tensor_out.shape)
+        #logger.debug("Shape tensor: %s", tensor.shape)
         tensor_out = mpo_contraction(tensor_out, tensor)
+        logger.debug("Shape tensor_out out: %s", tensor_out.shape)
+        
         
     tensor_out = contract_indices_one_tensor(tensor_out, [(0, 3)])
     
     return tensor_out
 
-def reduced_rho_mps(mps, free_indices, contraction_indices):
+def reduced_rho_mps_old(mps, free_indices, contraction_indices):
     i = 0
     tensor_out = mps[i]
     # Starting Tensor for Denisty Matrix
@@ -139,6 +145,47 @@ def reduced_rho_mps(mps, free_indices, contraction_indices):
     tensor_out = contract_indices_one_tensor(tensor_out, [(0, 2), (3, 5)])
     
     return tensor_out   
+def contraction_pl(tensor):
+    tensor = contract_indices(tensor, tensor.conj(), [1], [1])
+    tensor = tensor.transpose(0, 2, 1, 3)
+    reshape = [
+        tensor.shape[0] * tensor.shape[1], 
+        tensor.shape[2] * tensor.shape[3]
+    ]
+    tensor = tensor.reshape(reshape)
+    return tensor
+
+def reduced_rho_mpo(mps, free_indices, contraction_indices):
+    opa = list(product([0, 1], repeat=2 * len(free_indices)))
+    
+    reduced_rho = np.zeros(
+        (2**len(free_indices), 2**len(free_indices)), dtype="complex")
+    
+    l = []
+    for step in opa:
+        tensor_out = mps[0]
+        if 0 in free_indices:
+            i = free_indices.index(0)
+            tensor_out = np.kron(tensor_out[:, step[2*i], :], tensor_out.conj()[:, step[2*i+1], :])
+        else:
+
+            tensor_out = contraction_pl(tensor_out)
+        for i in range(1, len(mps)):
+            tensor = mps[i]
+            if i in free_indices:
+                j = free_indices.index(i)
+                tensor = np.kron(tensor[:, step[2*j], :], tensor.conj()[:, step[2*j+1], :])
+            elif i in contraction_indices:
+                tensor = contraction_pl(tensor)
+            tensor_out = tensor_out @ tensor
+        row = [v for i, v in enumerate(step) if i%2==0]
+        row_int = sum([v * 2 ** i for i, v in enumerate(row)])
+        #print(row, row_int)
+        column = [v for i, v in enumerate(step) if i%2!=0]
+        column_int = sum([v * 2 ** i for i, v in enumerate(column)])
+        #print(column, column_int)
+        reduced_rho[row_int, column_int] = np.trace(tensor_out)
+    return reduced_rho
 
 def get_local_reduced_matrix(state, qb_pos):
     """
