@@ -15,7 +15,7 @@ import pandas as pd
 from scipy import linalg
 from itertools import product
 from pauli import pauli_decomposition
-from reduced_rho import reduced_rho_mps
+from reduced_rho import reduced_rho_mps, reduced_rho_mps_test
 import logging
 logger = logging.getLogger('__name__')
 
@@ -50,7 +50,7 @@ def get_null_projectors(array):
     h_null = v_null @ np.conj(v_null.T)
     return h_null
 
-def get_local_reduced_matrix(state, qb_pos):
+def get_local_reduced_matrix(state, qb_pos, Test=False):
     """
     Given a MPS representation of a input state and position qubit
     (qb_pos) computes the minimum local reduced density matrix from
@@ -92,7 +92,10 @@ def get_local_reduced_matrix(state, qb_pos):
         ]
         logger.debug("\t contraction_indices: %s", contraction_indices)
         # Computing the reduced density matrix
-        rho = reduced_rho_mps(state, free_indices, contraction_indices)
+        if Test == False:
+            rho = reduced_rho_mps(state, free_indices, contraction_indices)
+        else:
+            rho = reduced_rho_mps_test(state, free_indices, contraction_indices)
         # Computes the rank of the obtained reduced matrix
         rank = np.linalg.matrix_rank(rho)
         logger.debug("\t rank: %d. Dimension: %d", rank, len(rho))
@@ -144,6 +147,7 @@ class PH_MPS:
         # For Saving
         self._save = kwargs.get("save", False)
         self.filename = kwargs.get("filename", None)
+        self.test = kwargs.get("Test", False)
         # Float precision for removing Pauli coefficients
         self.float_precision = np.finfo(float).eps
         # For storing the reduced density matrix
@@ -222,7 +226,8 @@ class PH_MPS:
         for qb_pos in iterator:
             # Computing local reduced density matrix of the qubit
             logger.info("Reduced density Matrix Computations. Start")
-            lq, lrho = get_local_reduced_matrix(self.mps_state, qb_pos)
+            lq, lrho = get_local_reduced_matrix(
+                self.mps_state, qb_pos, self.test)
             logger.info("Reduced density Matrix Computations. End")
             self.local_free_qubits = self.local_free_qubits + [lq]
             self.reduced_rho = self.reduced_rho + [lrho]

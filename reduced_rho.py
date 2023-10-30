@@ -316,7 +316,7 @@ def reduced_rho_mps(mps, free_indices, contraction_indices):
     """
     Computes reduced density matrix by contracting first the MPS
     with NON contracted legs. Then compute the contraction of the
-    MPS with contracted legs. Finally Contract the result of the 
+    MPS with contracted legs. Finally Contract the result of the
     Non Contracted operations with the Contracted Ones for getting
     the desired reduced density matrix. Try to alternate MPS contraction
     of states (free legs) with MPO contractions (contracted legs)
@@ -334,7 +334,7 @@ def reduced_rho_mps(mps, free_indices, contraction_indices):
     first_dim = int(np.sqrt(tensor_contracted.shape[0]))
     second_dim = int(np.sqrt(tensor_contracted.shape[-1]))
     tensor_contracted = tensor_contracted.reshape([
-        first_dim, first_dim, second_dim,second_dim]) 
+        first_dim, first_dim, second_dim,second_dim])
 
     # Second deal with free indices
     tensor_free = mps[free_indices[0]]
@@ -354,6 +354,71 @@ def reduced_rho_mps(mps, free_indices, contraction_indices):
     logger.debug("Contracted tensor: {}".format(tensor_contracted.shape))
     # tensor free is the result of the contractions of tensors with
     # non contracted physical legs
+    tensor_out = contract_indices(
+        tensor_free, tensor_contracted, [2, 0], [0, 2])
+    logger.debug("Output tensor: {}".format(tensor_out.shape))
+    tensor_out = contract_indices(
+        tensor_out, tensor_free.conj(), [1, 2], [2, 0])
+    logger.debug("Output tensor: {}".format(tensor_out.shape))
+
+    return tensor_out
+
+def reduced_rho_mps_test(mps, free_indices, contraction_indices):
+    """
+    Computes reduced density matrix by contracting first the MPS
+    with NON contracted legs. Then compute the contraction of the
+    MPS with contracted legs. Finally Contract the result of the
+    Non Contracted operations with the Contracted Ones for getting
+    the desired reduced density matrix. Try to alternate MPS contraction
+    of states (free legs) with MPO contractions (contracted legs)
+    """
+    # First deal with contraction indices
+    logger.debug("MPS: {}".format([a.shape for a in mps]))
+    tensor_contracted = contraction_pl(mps[contraction_indices[0]])
+    for i in contraction_indices[1:]:
+        #print(i)
+        tensor = contraction_pl(mps[i])
+        #tensor_contracted = mpo_contraction(tensor_contracted, tensor)
+        tensor_contracted = contract_indices(tensor_contracted, tensor, [2], [0])
+        reshape = [
+            tensor_contracted.shape[0] ,
+            tensor_contracted.shape[1] * tensor_contracted.shape[2],
+            tensor_contracted.shape[3],
+        ]
+        tensor_contracted = tensor_contracted.reshape(reshape)
+    # tensor_contracted is a matrix formed with the tensors with
+    # contracted physical legs
+
+    first_dim = int(np.sqrt(tensor_contracted.shape[0]))
+    second_dim = int(np.sqrt(tensor_contracted.shape[-1]))
+    tensor_contracted = tensor_contracted.reshape([
+        first_dim, first_dim, second_dim,second_dim])
+
+    # Second deal with free indices
+    tensor_free = mps[free_indices[0]]
+    for i in free_indices[1:]:
+        #print(i)
+        tensor = mps[i]
+        #print(tensor.shape)
+        tensor_free= contract_indices(tensor_free, tensor, [2], [0])
+        #print(tensor_free.shape)
+        reshape = [
+            tensor_free.shape[0] ,
+            tensor_free.shape[1] * tensor_free.shape[2],
+            tensor_free.shape[3],
+        ]
+        tensor_free = tensor_free.reshape(reshape)
+    logger.debug("Free tensor: {}".format(tensor_free.shape))
+    logger.debug("Contracted tensor: {}".format(tensor_contracted.shape))
+    # tensor free is the result of the contractions of tensors with
+    # non contracted physical legs
+
+    # First Deal with Contracted
+    tensor_contracted = contract_indices(
+        tensor_contracted, tensor_contracted.conj(), [1], [1])
+    tensor_contracted = tensor_contracted.transpose(0, 2, 1, 3)
+    logger.debug("Contracted tensor: {}".format(tensor_contracted.shape))
+
     tensor_out = contract_indices(
         tensor_free, tensor_contracted, [2, 0], [0, 2])
     logger.debug("Output tensor: {}".format(tensor_out.shape))
