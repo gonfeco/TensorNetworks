@@ -1,0 +1,11 @@
+[
+    {
+        "nqubits": [4, 5],
+        "depth": [1, 2, 3, 4],
+        "t_inv": [true],
+        "truncate" : [true],
+        "mpstest": [false],
+        "folder":  ["./Zalo"],
+        "save": [true]
+    }
+]

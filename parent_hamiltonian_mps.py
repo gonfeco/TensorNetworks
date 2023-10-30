@@ -13,9 +13,11 @@ import time
 import numpy as np
 import pandas as pd
 from scipy import linalg
-from itertools import product
+
 from pauli import pauli_decomposition
 from reduced_rho import reduced_rho_mps, reduced_rho_mps_test
+from ansatz_mps import ansatz, get_angles
+from  utils_ph import create_folder 
 import logging
 logger = logging.getLogger('__name__')
 
@@ -300,34 +302,39 @@ class PH_MPS:
         pdf.to_csv(self.filename+"_ph_time.csv", sep=";")
 
 def run_parent_hamiltonian(**configuration):
-    state_file = configuration["state"]
-    base_fn = configuration["base_fn"]
-    save = configuration["save"]
+    """
+    Computes Parent Hamiltonian for an ansatz
+    """
+    # Ansatz configuration
+    nqubits = configuration["nqubits"]
+    depth = configuration["depth"]
+    truncate = configuration["truncate"]
+    # PH configuration
     t_inv = configuration["t_inv"]
+    mpstest = configuration["mpstest"]
+    save = configuration["save"]
+    folder_name = configuration["folder"]
 
-    logger.info("Loading State")
-    state = pd.read_csv(state_file, sep=";", index_col=0)
-    print(state)
-
-    # Create PH
-    logger.info("Computing Local Parent Hamiltonian")
-    amplitudes = state[["Amplitude"]].astype(complex)
-    print(amplitudes)
-    # Compute Local PH
-    ph_conf = {
-        "filename": base_fn,
-        "save": save
-    }
-    ph_object = PH(amplitudes, t_inv, **ph_conf)
-    ph_object.local_ph()
+    # Build Angles
+    angles = get_angles(depth)
+    # Build MPS of the ansatz
+    mps = ansatz(nqubits, depth, angles, truncate)
+    # Configuring PH computations
+    folder_name = create_folder(folder_name)
+    base_fn = folder_name + "nqubits_{}_depth_{}".format(
+        str(nqubits).zfill(2), depth)
+    ph_conf = {"save": save, "test": mpstest, "filename":base_fn}
+    # Computing Parent Hamniltonian using MPS
+    ph_ob_mps = PH_MPS(mps, t_inv, **ph_conf)
+    ph_ob_mps.local_ph()
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        format='%(asctime)s-%(levelname)s: %(message)s',
-        datefmt='%m/%d/%Y %I:%M:%S %p',
-        level=logging.INFO
-        #level=logging.DEBUG
-    )
+    #logging.basicConfig(
+    #    format='%(asctime)s-%(levelname)s: %(message)s',
+    #    datefmt='%m/%d/%Y %I:%M:%S %p',
+    #    level=logging.INFO
+    #    #level=logging.DEBUG
+    #)
     logger = logging.getLogger('__name__')
     # Given a state Compute its Parent Hamiltonian
     import argparse
@@ -335,11 +342,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--save",
-        dest="save",
+        "-nqubits",
+        dest="nqubits",
+        type=int,
+        help="Number of qbits for the ansatz.",
+        default=None,
+    )
+    parser.add_argument(
+        "-depth",
+        dest="depth",
+        type=int,
+        help="Depth for ansatz.",
+        default=None,
+    )
+    parser.add_argument(
+        "--truncate",
+        dest="truncate",
         default=False,
         action="store_true",
-        help="For storing results",
+        help="Truncating the SVD. Float resolution will be used",
     )
     parser.add_argument(
         "--t_inv",
@@ -349,21 +370,45 @@ if __name__ == "__main__":
         help="Setting translational invariant of the ansatz",
     )
     parser.add_argument(
-        "-state",
-        dest="state",
-        type=str,
-        default="",
-        help="Filename of the state",
+        "--save",
+        dest="save",
+        default=False,
+        action="store_true",
+        help="For storing results",
     )
     parser.add_argument(
-        "-basefn",
-        dest="base_fn",
+        "--mpstest",
+        dest="mpstest",
+        default=False,
+        action="store_true",
+        help="New Contractions Tested",
+    )
+    parser.add_argument(
+        "-folder",
+        dest="folder",
         type=str,
         default="",
-        help="Base Filename for Saving Pauli Decomposition",
+        help="Folder for Storing Results",
+    )
+    parser.add_argument(
+        "--print",
+        dest="print",
+        default=False,
+        action="store_true",
+        help="For printing the AE algorihtm configuration."
+    )
+    parser.add_argument(
+        "--exe",
+        dest="execution",
+        default=False,
+        action="store_true",
+        help="For executing program",
     )
     args = parser.parse_args()
-    run_parent_hamiltonian(**vars(args))
+    if args.print:
+        print(args)
+    if args.execution:
+        run_parent_hamiltonian(**vars(args))
 
 
     # folder = "/mnt/netapp1/Store_CESGA/home/cesga/gferro/PH/"

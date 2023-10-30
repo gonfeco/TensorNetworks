@@ -33,7 +33,7 @@ def get_angles(depth):
         angles.append([(2 * i + 1) * delta_theta, (2 * i + 2) * delta_theta])
     return angles
 
-def ansatz(nqubits, depth, angles, truncate=True, t_v=1.0e-8):
+def ansatz(nqubits, depth, angles, truncate=True, t_v=None):
     # Intitial State
     zeroket = np.zeros((1, 2, 1))
     zeroket[0][0][0] = 1
