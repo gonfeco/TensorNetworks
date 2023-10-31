@@ -17,7 +17,7 @@ from scipy import linalg
 from pauli import pauli_decomposition
 from reduced_rho import reduced_rho_mps, reduced_rho_mps_test
 from ansatz_mps import ansatz, get_angles
-from  utils_ph import create_folder 
+from  utils_ph import create_folder
 import logging
 logger = logging.getLogger('__name__')
 
