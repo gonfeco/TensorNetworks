@@ -315,14 +315,21 @@ def run_parent_hamiltonian(**configuration):
     save = configuration["save"]
     folder_name = configuration["folder"]
 
-    # Build Angles
-    angles = get_angles(depth)
-    # Build MPS of the ansatz
-    mps = ansatz(nqubits, depth, angles, truncate)
-    # Configuring PH computations
     folder_name = create_folder(folder_name)
     base_fn = folder_name + "nqubits_{}_depth_{}".format(
         str(nqubits).zfill(2), depth)
+    # Build Angles
+    angles = get_angles(depth)
+    list_angles = []
+    for angle in angles:
+        list_angles = list_angles + angle
+    param_names = ["\\theta_{}".format(i) for i, _ in enumerate(list_angles)]
+    pdf_angles = pd.DataFrame([param_names, list_angles], index=["key", "value"]).T
+    if save:
+        pdf_angles.to_csv(base_fn + "_parameters.csv", sep=";")
+    # Build MPS of the ansatz
+    mps = ansatz(nqubits, depth, angles, truncate)
+    # Configuring PH computations
     ph_conf = {"save": save, "test": mpstest, "filename":base_fn}
     # Computing Parent Hamniltonian using MPS
     ph_ob_mps = PH_MPS(mps, t_inv, **ph_conf)
